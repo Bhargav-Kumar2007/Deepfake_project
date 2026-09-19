@@ -1,0 +1,826 @@
+--------------CELL-1---------------
+from google.colab import drive
+drive.mount('/content/drive')
+
+--------------CELL-2---------------
+# Create .kaggle directory and move kaggle.json
+!mkdir -p ~/.kaggle
+import os
+kaggle_json = "/root/.kaggle/kaggle.json"
+import shutil
+
+if not os.path.exists(kaggle_json):
+
+    from google.colab import files
+
+    print("Upload your kaggle.json file:")
+    uploaded = files.upload()
+
+    if "kaggle.json" not in uploaded:
+        raise RuntimeError("kaggle.json was not uploaded.")
+
+    os.makedirs("/root/.kaggle", exist_ok=True)
+
+    shutil.move(
+        "kaggle.json",
+        kaggle_json
+    )
+
+    os.chmod(kaggle_json, 0o600)
+# Verify the Kaggle configuration
+!chmod 600 ~/.kaggle/kaggle.json
+!ls -l ~/.kaggle
+
+---------------CELL-3---------------
+!pip install kaggle
+
+---------------CELL-4---------------
+import os
+
+# List of Kaggle dataset identifiers (replace with your actual datasets)
+kaggle_datasets = [
+    "bhargavkumar1729/upload-folder-sdxl-aiface-dataset",
+    "bhargavkumar1729/stylegan3-pytorch-faces-15k",
+    "bhargavkumar1729/stylegan2-ada-pytorch-faces-15k",
+    "bhargavkumar1729/gan-real-faces-50k-ffhq"
+]
+
+# Directory to store the downloaded data
+download_dir = "./kaggle_data"
+os.makedirs(download_dir, exist_ok=True)
+
+for dataset_identifier in kaggle_datasets:
+    print(f"\n--- Processing dataset: {dataset_identifier} ---")
+
+    # Download the dataset
+    # The -p flag specifies the path to download to
+    # The -q flag makes the download quiet (no progress bar)
+    download_command = f"kaggle datasets download -d {dataset_identifier} -p {download_dir} -q"
+    print(f"Downloading: {dataset_identifier}")
+    os.system(download_command)
+
+    # Find the downloaded zip file(s)
+    # Kaggle downloads the dataset as a zip file named after the dataset identifier's last part (e.g., 'first-dataset-name.zip')
+    # or sometimes as a single zip file for the entire dataset.
+    # We'll look for all .zip files in the download directory to be safe.
+
+    # Get the base name of the dataset to look for its zip file
+    dataset_base_name = dataset_identifier.split('/')[-1]
+    zip_file_name_guess = os.path.join(download_dir, f"{dataset_base_name}.zip")
+
+    # If the guessed zip file exists, unzip it. Otherwise, look for other zips.
+    if os.path.exists(zip_file_name_guess):
+        zip_files_to_process = [zip_file_name_guess]
+    else:
+        # Fallback: find all zip files in the download directory
+        zip_files_to_process = [os.path.join(download_dir, f) for f in os.listdir(download_dir) if f.endswith('.zip')]
+
+    if not zip_files_to_process:
+        print(f"No zip files found for {dataset_identifier} in {download_dir}. Skipping unzip and delete.")
+        continue
+
+    for zip_file_path in zip_files_to_process:
+        print(f"Unzipping: {os.path.basename(zip_file_path)}")
+        # Unzip the file into the download directory
+        unzip_command = f"unzip -o {zip_file_path} -d {download_dir}" # -o to overwrite existing files without prompting
+        os.system(unzip_command)
+
+        # Delete the zipped file
+        print(f"Deleting zipped file: {os.path.basename(zip_file_path)}")
+        os.remove(zip_file_path)
+
+print("\nAll datasets processed.")
+!rm -rf ./kaggle_data/my_dataset_upload
+# Optional: List the contents of the download directory to verify
+print("\nContents of the download directory:")
+!ls -Fh {download_dir}
+
+---------------CELL-5---------------
+import os
+import shutil
+import random
+from glob import glob
+SEED = 42
+
+random.seed(SEED)
+# Define the base project directory
+base_dir = "Faces_Project"
+dataset_dir = os.path.join(base_dir, "Dataset")
+
+# Define target subdirectories
+train_real_dir = os.path.join(dataset_dir, "train", "real")
+train_fake_dir = os.path.join(dataset_dir, "train", "fake")
+val_real_dir = os.path.join(dataset_dir, "val", "real")
+val_fake_dir = os.path.join(dataset_dir, "val", "fake")
+
+# Create all necessary directories
+os.makedirs(train_real_dir, exist_ok=True)
+os.makedirs(train_fake_dir, exist_ok=True)
+os.makedirs(val_real_dir, exist_ok=True)
+os.makedirs(val_fake_dir, exist_ok=True)
+
+print("Created directory structure:")
+print(f"- {train_real_dir}")
+print(f"- {train_fake_dir}")
+print(f"- {val_real_dir}")
+print(f"- {val_fake_dir}")
+
+---------------CELL-6----------------
+# Source directory for real images
+real_source_dir = "./kaggle_data/real"
+
+# List all real image files (assuming .jpg, .png, etc.)
+real_images = []
+for ext in ('*.jpg', '*.jpeg', '*.png'):
+    real_images.extend(glob(os.path.join(real_source_dir, '**', ext), recursive=True))
+
+print(f"Found {len(real_images)} real images.")
+
+# Shuffle the images
+random.shuffle(real_images)
+
+# Define split counts
+train_real_count = 40000
+val_real_count = 10000
+
+if len(real_images) < (train_real_count + val_real_count):
+    print(f"Warning: Not enough real images ({len(real_images)}) for desired split (50000). Using all available.")
+    train_real_count = int(len(real_images) * 0.8) # Adjust proportionally
+    val_real_count = len(real_images) - train_real_count
+
+# Split into train and validation sets
+train_real_images = real_images[:train_real_count]
+val_real_images = real_images[train_real_count : train_real_count + val_real_count]
+
+print(f"Moving {len(train_real_images)} real images to training.")
+for i, img_path in enumerate(train_real_images):
+    new_name = f"real_{i:05d}{os.path.splitext(img_path)[1]}"
+    shutil.move(img_path, os.path.join(train_real_dir, new_name))
+
+print(f"Moving {len(val_real_images)} real images to validation.")
+for i, img_path in enumerate(val_real_images):
+    new_name = f"real_{i:05d}{os.path.splitext(img_path)[1]}"
+    shutil.move(img_path, os.path.join(val_real_dir, new_name))
+
+print("Real images processed.")
+
+---------------CELL-7----------------
+# Source directories for fake images
+fake_source_dirs = [
+    "./kaggle_data/Final_SDXL_AIface_DS",
+    "./kaggle_data/stylegan2_faces",
+    "./kaggle_data/stylegan3_faces"
+]
+
+# List all fake image files
+fake_images = []
+for source_dir in fake_source_dirs:
+    for ext in ('*.jpg', '*.jpeg', '*.png'):
+        fake_images.extend(glob(os.path.join(source_dir, '**', ext), recursive=True))
+
+print(f"Found {len(fake_images)} fake images.")
+
+# Shuffle the images
+random.shuffle(fake_images)
+
+# Define split counts
+train_fake_count = 40000
+val_fake_count = 10000
+
+if len(fake_images) < (train_fake_count + val_fake_count):
+    print(f"Warning: Not enough fake images ({len(fake_images)}) for desired split (50000). Using all available.")
+    train_fake_count = int(len(fake_images) * 0.8) # Adjust proportionally
+    val_fake_count = len(fake_images) - train_fake_count
+
+# Split into train and validation sets
+train_fake_images = fake_images[:train_fake_count]
+val_fake_images = fake_images[train_fake_count : train_fake_count + val_fake_count]
+
+print(f"Moving {len(train_fake_images)} fake images to training.")
+for i, img_path in enumerate(train_fake_images):
+    new_name = f"fake_{i:05d}{os.path.splitext(img_path)[1]}"
+    shutil.move(img_path, os.path.join(train_fake_dir, new_name))
+
+print(f"Moving {len(val_fake_images)} fake images to validation.")
+for i, img_path in enumerate(val_fake_images):
+    new_name = f"fake_{i:05d}{os.path.splitext(img_path)[1]}"
+    shutil.move(img_path, os.path.join(val_fake_dir, new_name))
+
+print("Fake images processed.")
+
+---------------CELL-8--------------
+# Remove the original downloaded data directory to save space
+if os.path.exists("./kaggle_data"):
+    shutil.rmtree("./kaggle_data")
+    print("Removed original ./kaggle_data directory.")
+
+print("\nVerifying final directory structure and counts:")
+!ls -Fh {dataset_dir}
+!echo ""
+!ls -Fh {train_real_dir} | wc -l
+!ls -Fh {train_fake_dir} | wc -l
+!ls -Fh {val_real_dir} | wc -l
+!ls -Fh {val_fake_dir} | wc -l
+
+---------------CELL-9----------------
+import torch
+print(torch.cuda.is_available())
+print(torch.version.cuda)
+print(torch.backends.cudnn.version())
+
+-----------------CELL-10----------------
+import torch
+import torch.nn as nn
+from torchvision import transforms
+from PIL import Image
+import os
+import numpy as np
+from google.colab import drive
+
+# ============================================================
+# MOUNT DRIVE (Colab only)
+# ============================================================
+drive.mount('/content/drive', force_remount=True)
+
+# ============================================================
+# CONFIGURATION
+# ============================================================
+CHECKPOINT_PATH = "/content/drive/MyDrive/Faces_Project/checkpoints/best_model.pth"
+IMAGE_SIZE = 256
+BATCH_SIZE = 64  # 👈 BATCH SIZE FOR INFERENCE
+DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+print("=" * 60)
+print("GLOBAL CNN BATCH INFERENCE")
+print("=" * 60)
+print(f"Device: {DEVICE}")
+print(f"Batch size: {BATCH_SIZE}")
+
+# ============================================================
+# MODEL ARCHITECTURE (DeepCNN - 4.8M)
+# ============================================================
+class DeepCNN(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.features = nn.Sequential(
+            nn.Conv2d(3, 32, kernel_size=3, padding=1),
+            nn.BatchNorm2d(32),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(32, 32, kernel_size=3, padding=1),
+            nn.BatchNorm2d(32),
+            nn.ReLU(inplace=True),
+            nn.MaxPool2d(2),
+            nn.Conv2d(32, 64, kernel_size=3, padding=1),
+            nn.BatchNorm2d(64),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(64, 64, kernel_size=3, padding=1),
+            nn.BatchNorm2d(64),
+            nn.ReLU(inplace=True),
+            nn.MaxPool2d(2),
+            nn.Conv2d(64, 128, kernel_size=3, padding=1),
+            nn.BatchNorm2d(128),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(128, 128, kernel_size=3, padding=1),
+            nn.BatchNorm2d(128),
+            nn.ReLU(inplace=True),
+            nn.MaxPool2d(2),
+            nn.Conv2d(128, 256, kernel_size=3, padding=1),
+            nn.BatchNorm2d(256),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(256, 256, kernel_size=3, padding=1),
+            nn.BatchNorm2d(256),
+            nn.ReLU(inplace=True),
+            nn.MaxPool2d(2),
+            nn.Conv2d(256, 512, kernel_size=3, padding=1),
+            nn.BatchNorm2d(512),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(512, 512, kernel_size=3, padding=1),
+            nn.BatchNorm2d(512),
+            nn.ReLU(inplace=True),
+            nn.MaxPool2d(2)
+        )
+        self.classifier = nn.Sequential(
+            nn.AdaptiveAvgPool2d(1),
+            nn.Flatten(),
+            nn.Linear(512, 256),
+            nn.ReLU(inplace=True),
+            nn.Dropout(0.4),
+            nn.Linear(256, 1)
+        )
+
+    def forward(self, x):
+        x = self.features(x)
+        x = self.classifier(x)
+        return x
+
+# ============================================================
+# LOAD MODEL
+# ============================================================
+model = DeepCNN().to(DEVICE)
+checkpoint = torch.load(CHECKPOINT_PATH, map_location=DEVICE, weights_only=False)
+
+if 'model_state_dict' in checkpoint:
+    model.load_state_dict(checkpoint['model_state_dict'])
+else:
+    model.load_state_dict(checkpoint)
+
+model.eval()
+print("✅ Model loaded successfully")
+
+# ============================================================
+# TRANSFORMS
+# ============================================================
+transform = transforms.Compose([
+    transforms.Resize((IMAGE_SIZE, IMAGE_SIZE)),
+    transforms.ToTensor(),
+    transforms.Normalize([0.5, 0.5, 0.5], [0.5, 0.5, 0.5])
+])
+
+# ============================================================
+# BATCH INFERENCE FUNCTION
+# ============================================================
+def predict_batch_wide(image_paths, batch_size=BATCH_SIZE):
+    """
+    Predict on a batch of images.
+
+    Args:
+        image_paths: list of image paths
+        batch_size: number of images per batch
+
+    Returns:
+        list of dicts with prediction results
+    """
+    results = []
+    total_images = len(image_paths)
+
+    for i in range(0, total_images, batch_size):
+        batch_paths = image_paths[i:i+batch_size]
+        batch_tensors = []
+
+        # Load and transform images
+        for img_path in batch_paths:
+            img = Image.open(img_path).convert('RGB')
+            img_tensor = transform(img)
+            batch_tensors.append(img_tensor)
+
+        # Stack into a single batch tensor [B, 3, 256, 256]
+        batch_tensor = torch.stack(batch_tensors).to(DEVICE)
+
+        # Forward pass
+        with torch.no_grad():
+            logits = model(batch_tensor)
+            probs = torch.sigmoid(logits).squeeze().cpu().numpy()
+
+        # Handle single image case
+        if len(batch_paths) == 1:
+            probs = [probs]
+
+        # Store results
+        for img_path, prob in zip(batch_paths, probs):
+            label = "FAKE" if prob >= 0.5 else "REAL"
+            confidence = prob if prob >= 0.5 else 1 - prob
+
+            results.append({
+                'filename': os.path.basename(img_path),
+                'image_path': img_path,
+                'probability': prob,
+                'prediction': label,
+                'confidence': confidence
+            })
+
+    return results
+
+# ============================================================
+# EXAMPLE USAGE
+# ============================================================
+print("\n" + "=" * 60)
+print("READY")
+print("=" * 60)
+print(f"""
+# Predict a batch of images:
+image_paths = ["/path/to/img1.jpg", "/path/to/img2.jpg", ...]
+results = predict_batch_wide(image_paths, batch_size=64)
+
+# Access results:
+for r in results:
+    print(r['filename'], r['prediction'], r['probability'])
+""")
+
+---------------------CELL11---------------
+import torch
+import torch.nn as nn
+from torchvision import transforms
+from PIL import Image
+import os
+import numpy as np
+from google.colab import drive
+
+# ============================================================
+# MOUNT DRIVE (Colab only)
+# ============================================================
+drive.mount('/content/drive', force_remount=True)
+
+# ============================================================
+# CONFIGURATION
+# ============================================================
+CHECKPOINT_PATH = "/content/drive/MyDrive/Faces_Project/patch_checkpoints/best_patch_model.pth"
+IMAGE_SIZE = 512
+PATCH_SIZE = 112
+OVERLAP = 20
+BATCH_SIZE = 32  # 👈 BATCH SIZE FOR INFERENCE (patch model is heavier)
+DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+print("=" * 60)
+print("PATCH CNN BATCH INFERENCE")
+print("=" * 60)
+print(f"Device: {DEVICE}")
+print(f"Batch size: {BATCH_SIZE}")
+
+# ============================================================
+# MODEL ARCHITECTURE (Patch CNN - 1.2M)
+# ============================================================
+class PatchCNN(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.features = nn.Sequential(
+            nn.Conv2d(3, 32, kernel_size=3, padding=1),
+            nn.BatchNorm2d(32),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(32, 32, kernel_size=3, padding=1),
+            nn.BatchNorm2d(32),
+            nn.ReLU(inplace=True),
+            nn.MaxPool2d(2),
+            nn.Conv2d(32, 64, kernel_size=3, padding=1),
+            nn.BatchNorm2d(64),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(64, 64, kernel_size=3, padding=1),
+            nn.BatchNorm2d(64),
+            nn.ReLU(inplace=True),
+            nn.MaxPool2d(2),
+            nn.Conv2d(64, 128, kernel_size=3, padding=1),
+            nn.BatchNorm2d(128),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(128, 128, kernel_size=3, padding=1),
+            nn.BatchNorm2d(128),
+            nn.ReLU(inplace=True),
+            nn.MaxPool2d(2),
+            nn.Conv2d(128, 256, kernel_size=3, padding=1),
+            nn.BatchNorm2d(256),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(256, 256, kernel_size=3, padding=1),
+            nn.BatchNorm2d(256),
+            nn.ReLU(inplace=True),
+            nn.MaxPool2d(2),
+        )
+        self.classifier = nn.Sequential(
+            nn.AdaptiveAvgPool2d(1),
+            nn.Flatten(),
+            nn.Linear(256, 128),
+            nn.ReLU(inplace=True),
+            nn.Dropout(0.3),
+            nn.Linear(128, 64),
+            nn.ReLU(inplace=True),
+            nn.Dropout(0.3),
+            nn.Linear(64, 1)
+        )
+
+    def forward(self, x):
+        x = self.features(x)
+        x = self.classifier(x)
+        return x
+
+# ============================================================
+# LOAD MODEL
+# ============================================================
+model = PatchCNN().to(DEVICE)
+checkpoint = torch.load(CHECKPOINT_PATH, map_location=DEVICE, weights_only=False)
+
+if 'model_state_dict' in checkpoint:
+    model.load_state_dict(checkpoint['model_state_dict'])
+else:
+    model.load_state_dict(checkpoint)
+
+model.eval()
+print("✅ Model loaded successfully")
+
+# ============================================================
+# PATCH EXTRACTION (BATCH VERSION)
+# ============================================================
+def extract_patches_batch(images, patch_size=PATCH_SIZE, overlap=OVERLAP):
+    """
+    Extract patches from a batch of images.
+
+    Args:
+        images: [B, 3, H, W] tensor
+        patch_size: size of each patch
+        overlap: overlap between patches
+
+    Returns:
+        List of [B, 3, patch_size, patch_size] tensors (one per patch position)
+    """
+    _, _, H, W = images.shape
+    stride = patch_size - overlap
+
+    positions = []
+    pos = 0
+    while pos + patch_size <= H:
+        positions.append(pos)
+        if pos + patch_size == H:
+            break
+        pos += stride
+        if pos + patch_size > H:
+            positions.append(H - patch_size)
+            break
+
+    patches = []
+    for y in positions:
+        for x in positions:
+            patch = images[:, :, y:y+patch_size, x:x+patch_size]
+            patches.append(patch)
+    return patches
+
+# ============================================================
+# TRANSFORMS
+# ============================================================
+transform = transforms.Compose([
+    transforms.Resize((IMAGE_SIZE, IMAGE_SIZE)),
+    transforms.ToTensor(),
+    transforms.Normalize([0.5, 0.5, 0.5], [0.5, 0.5, 0.5])
+])
+
+# ============================================================
+# BATCH INFERENCE FUNCTION
+# ============================================================
+def predict_batch_patch(image_paths, batch_size=BATCH_SIZE):
+    """
+    Predict on a batch of images using Patch CNN.
+
+    Args:
+        image_paths: list of image paths
+        batch_size: number of images per batch
+
+    Returns:
+        list of dicts with prediction results and statistics
+    """
+    results = []
+    total_images = len(image_paths)
+
+    for i in range(0, total_images, batch_size):
+        batch_paths = image_paths[i:i+batch_size]
+        batch_tensors = []
+
+        # Load and transform images
+        for img_path in batch_paths:
+            img = Image.open(img_path).convert('RGB')
+            img_tensor = transform(img)
+            batch_tensors.append(img_tensor)
+
+        # Stack into a single batch tensor [B, 3, 512, 512]
+        batch_tensor = torch.stack(batch_tensors).to(DEVICE)
+        current_batch_size = batch_tensor.size(0)
+
+        # Extract patches: list of [B, 3, 112, 112] tensors
+        patches = extract_patches_batch(batch_tensor)
+
+        # Process all patches through the model
+        patch_probs_list = []
+        with torch.no_grad():
+            for patch in patches:
+                logits = model(patch)  # [B, 1]
+                probs = torch.sigmoid(logits).squeeze(1)  # [B]
+                patch_probs_list.append(probs.cpu().numpy())
+
+        # Stack patch probabilities: [num_patches, B]
+        all_patch_probs = np.stack(patch_probs_list, axis=0)  # [num_patches, B]
+
+        # Calculate statistics per image
+        for j in range(current_batch_size):
+            img_probs = all_patch_probs[:, j]  # [num_patches]
+
+            mean = float(np.mean(img_probs))
+            variance = float(np.var(img_probs))
+            std_dev = float(np.std(img_probs))
+
+            prediction = "FAKE" if mean >= 0.5 else "REAL"
+            confidence = mean if mean >= 0.5 else 1 - mean
+
+            results.append({
+                'filename': os.path.basename(batch_paths[j]),
+                'image_path': batch_paths[j],
+                'prediction': prediction,
+                'confidence': confidence,
+                'mean': mean,
+                'variance': variance,
+                'std_dev': std_dev,
+                'patch_count': len(patches),
+                'patch_probs': img_probs.tolist()
+            })
+
+    return results
+
+# ============================================================
+# EXAMPLE USAGE
+# ============================================================
+print("\n" + "=" * 60)
+print("READY")
+print("=" * 60)
+print(f"""
+# Predict a batch of images:
+image_paths = ["/path/to/img1.jpg", "/path/to/img2.jpg", ...]
+results = predict_batch_patch(image_paths, batch_size=32)
+
+# Access results:
+for r in results:
+    print(r['filename'], r['prediction'], r['mean'], r['std_dev'])
+""")
+
+-------------------CELL12------------------
+import os
+import csv
+import glob
+from tqdm import tqdm
+
+# ============================================================
+# CONFIGURATION
+# ============================================================
+DATASET_ROOT = "/content/Faces_Project/Dataset"
+OUTPUT_DIR = "/content/drive/MyDrive/Faces_Project/evaluation_results"
+os.makedirs(OUTPUT_DIR, exist_ok=True)
+
+# All image paths (train + val)
+image_paths = []
+for split in ['train', 'val']:
+    for label in ['real', 'fake']:
+        folder = os.path.join(DATASET_ROOT, split, label)
+        image_paths.extend(glob.glob(os.path.join(folder, '*.*')))
+
+print(f"Found {len(image_paths)} total images")
+
+# ============================================================
+# PREDICT ALL IMAGES
+# ============================================================
+results = []
+
+print("\n📊 Running predictions...")
+for img_path in tqdm(image_paths, desc="Processing"):
+    # Determine ground truth from path
+    if '/real/' in img_path:
+        true_label = 'real'
+    else:
+        true_label = 'fake'
+
+    # Wide (Global CNN) prediction
+    try:
+        wide_result = predict_image_wide(img_path)
+        wide_pred = wide_result['prediction'].lower()
+        wide_prob = wide_result['probability']
+        wide_conf = wide_result['confidence']
+    except Exception as e:
+        print(f"⚠️ Wide CNN failed on {img_path}: {e}")
+        wide_pred, wide_prob, wide_conf = 'error', 0.0, 0.0
+
+    # Patch CNN prediction
+    try:
+        patch_result = predict_image_patch(img_path)
+        patch_pred = patch_result['prediction'].lower()
+        patch_mean = patch_result['mean']
+        patch_std = patch_result['std_dev']
+        patch_var = patch_result['variance']
+        patch_conf = patch_result['confidence']
+    except Exception as e:
+        print(f"⚠️ Patch CNN failed on {img_path}: {e}")
+        patch_pred, patch_mean, patch_std, patch_var, patch_conf = 'error', 0.0, 0.0, 0.0, 0.0
+
+    # Store results
+    results.append({
+        'image_path': img_path,
+        'true_label': true_label,
+        'wide_pred': wide_pred,
+        'wide_prob': wide_prob,
+        'wide_conf': wide_conf,
+        'patch_pred': patch_pred,
+        'patch_mean': patch_mean,
+        'patch_std': patch_std,
+        'patch_var': patch_var,
+        'patch_conf': patch_conf
+    })
+
+# ============================================================
+# SAVE FULL PREDICTIONS CSV
+# ============================================================
+csv_path = os.path.join(OUTPUT_DIR, "all_predictions.csv")
+with open(csv_path, 'w', newline='') as f:
+    writer = csv.writer(f)
+    writer.writerow([
+        'image_path', 'true_label',
+        'wide_pred', 'wide_prob', 'wide_conf',
+        'patch_pred', 'patch_mean', 'patch_std', 'patch_var', 'patch_conf'
+    ])
+    for r in results:
+        writer.writerow([
+            r['image_path'],
+            r['true_label'],
+            r['wide_pred'],
+            f"{r['wide_prob']:.6f}",
+            f"{r['wide_conf']:.6f}",
+            r['patch_pred'],
+            f"{r['patch_mean']:.6f}",
+            f"{r['patch_std']:.6f}",
+            f"{r['patch_var']:.6f}",
+            f"{r['patch_conf']:.6f}"
+        ])
+
+print(f"\n✅ Full predictions saved to: {csv_path}")
+
+# ============================================================
+# CALCULATE METRICS
+# ============================================================
+def calculate_metrics(predictions, ground_truth):
+    """Calculate accuracy, precision, recall, f1"""
+    # Convert to binary labels (fake=1, real=0)
+    pred_binary = [1 if p == 'fake' else 0 for p in predictions]
+    true_binary = [1 if gt == 'fake' else 0 for gt in ground_truth]
+
+    # Confusion matrix
+    TP = sum(1 for p, t in zip(pred_binary, true_binary) if p == 1 and t == 1)
+    TN = sum(1 for p, t in zip(pred_binary, true_binary) if p == 0 and t == 0)
+    FP = sum(1 for p, t in zip(pred_binary, true_binary) if p == 1 and t == 0)
+    FN = sum(1 for p, t in zip(pred_binary, true_binary) if p == 0 and t == 1)
+
+    # Metrics
+    accuracy = (TP + TN) / (TP + TN + FP + FN) if (TP + TN + FP + FN) > 0 else 0.0
+    precision = TP / (TP + FP) if (TP + FP) > 0 else 0.0
+    recall = TP / (TP + FN) if (TP + FN) > 0 else 0.0
+    f1 = 2 * precision * recall / (precision + recall) if (precision + recall) > 0 else 0.0
+
+    return {
+        'accuracy': accuracy,
+        'precision': precision,
+        'recall': recall,
+        'f1': f1,
+        'tp': TP,
+        'tn': TN,
+        'fp': FP,
+        'fn': FN
+    }
+
+# Get ground truth and predictions
+true_labels = [r['true_label'] for r in results]
+wide_preds = [r['wide_pred'] for r in results]
+patch_preds = [r['patch_pred'] for r in results]
+
+# Calculate metrics
+wide_metrics = calculate_metrics(wide_preds, true_labels)
+patch_metrics = calculate_metrics(patch_preds, true_labels)
+
+print("\n" + "=" * 60)
+print("MODEL PERFORMANCE")
+print("=" * 60)
+print(f"{'Model':<15} {'Accuracy':<12} {'Precision':<12} {'Recall':<12} {'F1':<12}")
+print("-" * 60)
+print(f"{'Wide CNN':<15} {wide_metrics['accuracy']*100:<11.2f}% {wide_metrics['precision']*100:<11.2f}% {wide_metrics['recall']*100:<11.2f}% {wide_metrics['f1']*100:<11.2f}%")
+print(f"{'Patch CNN':<15} {patch_metrics['accuracy']*100:<11.2f}% {patch_metrics['precision']*100:<11.2f}% {patch_metrics['recall']*100:<11.2f}% {patch_metrics['f1']*100:<11.2f}%")
+
+# ============================================================
+# SAVE METRICS CSV
+# ============================================================
+metrics_path = os.path.join(OUTPUT_DIR, "model_metrics.csv")
+with open(metrics_path, 'w', newline='') as f:
+    writer = csv.writer(f)
+    writer.writerow(['model_type', 'accuracy', 'precision', 'recall', 'f1', 'tp', 'tn', 'fp', 'fn'])
+    writer.writerow([
+        'wide_cnn',
+        f"{wide_metrics['accuracy']:.6f}",
+        f"{wide_metrics['precision']:.6f}",
+        f"{wide_metrics['recall']:.6f}",
+        f"{wide_metrics['f1']:.6f}",
+        wide_metrics['tp'],
+        wide_metrics['tn'],
+        wide_metrics['fp'],
+        wide_metrics['fn']
+    ])
+    writer.writerow([
+        'patch_cnn',
+        f"{patch_metrics['accuracy']:.6f}",
+        f"{patch_metrics['precision']:.6f}",
+        f"{patch_metrics['recall']:.6f}",
+        f"{patch_metrics['f1']:.6f}",
+        patch_metrics['tp'],
+        patch_metrics['tn'],
+        patch_metrics['fp'],
+        patch_metrics['fn']
+    ])
+
+print(f"\n✅ Metrics saved to: {metrics_path}")
+
+# ============================================================
+# SUMMARY
+# ============================================================
+print("\n" + "=" * 60)
+print("SUMMARY")
+print("=" * 60)
+print(f"Total images processed: {len(results)}")
+print(f"Train+Val images: {len(image_paths)}")
+print(f"Wide CNN Accuracy:  {wide_metrics['accuracy']*100:.2f}%")
+print(f"Patch CNN Accuracy: {patch_metrics['accuracy']*100:.2f}%")
+print(f"✅ All results saved to: {OUTPUT_DIR}")

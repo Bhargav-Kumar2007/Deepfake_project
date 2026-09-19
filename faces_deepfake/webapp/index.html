@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>DeepFake Detector</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main class="page">
+    <header>
+      <h1>DeepFake Detector</h1>
+      <p>Analysis Report: Wide Model, Local Model, and Ensemble Fusion</p>
+    </header>
+
+    <nav class="tabs" aria-label="Application sections">
+      <button class="tab active" data-tab="scan" type="button">Scan Image</button>
+      <button class="tab" data-tab="models" type="button">Model Data</button>
+    </nav>
+
+    <section id="scan" class="panel active">
+      <div class="actions">
+        <label class="button" for="file-input">Upload Photo</label>
+        <button id="camera-button" class="button" type="button">Use Camera</button>
+        <button id="rescan-button" class="button" type="button" disabled>Rescan</button>
+        <input id="file-input" type="file" accept="image/jpeg,image/png,image/webp,image/bmp" hidden>
+      </div>
+      <p id="status" class="status">Choose an image to begin.</p>
+
+      <div id="camera-area" class="camera-area" hidden>
+        <video id="camera" autoplay playsinline></video>
+        <div class="actions">
+          <button id="capture-button" class="button" type="button">Capture Photo</button>
+          <button id="close-camera" class="button" type="button">Close Camera</button>
+        </div>
+      </div>
+
+      <!-- Preview of uploaded input -->
+      <div id="preview-box" class="preview-box" hidden>
+        <h3>Uploaded Image</h3>
+        <img id="preview" alt="Uploaded photo preview">
+      </div>
+
+      <!-- 3 SEPARATED OUTCOMES -->
+      <div id="all-outcomes" class="outcomes-container" hidden>
+
+        <!-- 1. WIDE MODEL PREDICTION & EXPLAINABILITY -->
+        <section class="outcome-section" id="outcome-wide">
+          <div class="outcome-header">
+            <h2>1. Wide Model Prediction & Explainability</h2>
+            <span class="outcome-badge" id="wide-verdict-badge">--</span>
+          </div>
+
+          <table class="simple-table">
+            <tbody>
+              <tr><th>Verdict</th><td id="wide-val-verdict">--</td></tr>
+              <tr><th>Confidence</th><td id="wide-val-conf">--</td></tr>
+              <tr><th>Real Probability</th><td id="wide-val-real">--</td></tr>
+              <tr><th>Fake Probability</th><td id="wide-val-fake">--</td></tr>
+              <tr><th>Resolution</th><td>512 x 512 (Transformed for evaluation)</td></tr>
+            </tbody>
+          </table>
+
+          <div class="xai-subpanel">
+            <h3>Explainability Heatmaps (512x512 Transformed Image)</h3>
+            <p class="desc-text">Heatmaps and the face image are both aligned at 512x512 resolution for accurate pixel-to-pixel overlay.</p>
+
+            <div class="xai-nav">
+              <button class="xai-btn active" data-method="gradcam" type="button">Grad-CAM</button>
+              <button class="xai-btn" data-method="gradcam_plus_plus" type="button">Grad-CAM++</button>
+              <button class="xai-btn" data-method="score_cam" type="button">Score-CAM</button>
+              <button class="xai-btn" data-method="integrated_gradients" type="button">Integrated Gradients</button>
+              <button class="xai-btn" data-method="lime" type="button">LIME</button>
+              <button class="xai-btn" data-method="compare" type="button">Compare All (5)</button>
+            </div>
+
+            <!-- Single method view -->
+            <div id="xai-single-view" class="xai-single-view">
+              <div class="xai-view-left">
+                <div class="xai-stack-box">
+                  <img id="xai-transformed-base" alt="512x512 transformed face">
+                  <img id="xai-heatmap-layer" alt="Heatmap overlay">
+                </div>
+                <div class="slider-box">
+                  <label for="opacity-slider">Heatmap Opacity: <strong id="opacity-val">55%</strong></label>
+                  <input type="range" id="opacity-slider" min="0" max="100" value="55">
+                  <div class="slider-markers">
+                    <span>0% (Face)</span>
+                    <span>50%</span>
+                    <span>100% (Heatmap)</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="xai-view-right">
+                <h4 id="xai-method-title">Grad-CAM</h4>
+                <p id="xai-method-desc"></p>
+                <div class="legend-box">
+                  <div class="legend-title">Color Scale (Jet Colormap):</div>
+                  <div class="legend-bar"></div>
+                  <div class="legend-labels"><span>Low (Blue)</span><span>Moderate</span><span>High Attention (Red)</span></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Compare All Grid View -->
+            <div id="xai-grid-view" class="xai-grid-view" hidden>
+              <div class="xai-grid" id="xai-grid-container"></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 2. PATCH MEAN PREDICTION & EXPLAINABILITY -->
+        <section class="outcome-section" id="outcome-local">
+          <div class="outcome-header">
+            <h2>2. Patch Mean (Local Patch CNN) Prediction</h2>
+            <span class="outcome-badge" id="local-verdict-badge">--</span>
+          </div>
+          <table class="simple-table">
+            <tbody>
+              <tr><th>Verdict</th><td id="local-val-verdict">--</td></tr>
+              <tr><th>Confidence</th><td id="local-val-conf">--</td></tr>
+              <tr><th>Real Probability</th><td id="local-val-real">--</td></tr>
+              <tr><th>Fake Probability</th><td id="local-val-fake">--</td></tr>
+              <tr><th>Patches Evaluated</th><td id="local-val-count">--</td></tr>
+              <tr><th>Patch Score Mean</th><td id="local-val-mean">--</td></tr>
+              <tr><th>Patch Score Standard Deviation</th><td id="local-val-std">--</td></tr>
+              <tr><th>Patch Score Variance</th><td id="local-val-var">--</td></tr>
+            </tbody>
+          </table>
+
+          <div class="xai-subpanel" id="patch-xai-subpanel">
+            <h3>Patch Model Probability Heatmap (36 Patches, 112x112)</h3>
+            <p class="desc-text">Shows the probability distribution predicted across the 36 patches. Hover over any cell in the 6x6 grid to see which patch gave what probability and its position on the face.</p>
+
+            <div class="xai-single-view">
+              <div class="xai-view-left">
+                <div class="xai-stack-box" id="patch-stack-box">
+                  <img id="patch-transformed-base" alt="512x512 face base">
+                  <img id="patch-heatmap-layer" alt="Patch heatmap overlay">
+                  <div id="patch-highlight-box" class="patch-highlight-box" hidden></div>
+                </div>
+                <div class="slider-box">
+                  <label for="patch-opacity-slider">Patch Heatmap Opacity: <strong id="patch-opacity-val">55%</strong></label>
+                  <input type="range" id="patch-opacity-slider" min="0" max="100" value="55">
+                  <div class="slider-markers">
+                    <span>0% (Face)</span>
+                    <span>50%</span>
+                    <span>100% (Heatmap)</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="xai-view-right">
+                <h4>6x6 Patch Probability Matrix</h4>
+                <p class="desc-text">Hover over any cell (P1 to P36) to inspect exact probabilities:</p>
+                <div id="patch-matrix-grid" class="patch-matrix-grid"></div>
+
+                <div class="patch-inspect-box">
+                  <strong>Selected Patch:</strong>
+                  <div id="patch-inspect-text">Hover over any patch in the matrix to view details.</div>
+                </div>
+
+                <div class="legend-box">
+                  <div class="legend-title">Patch Probability Scale:</div>
+                  <div class="legend-bar"></div>
+                  <div class="legend-labels"><span>Blue = Real (0% Fake)</span><span>50% (Neutral)</span><span>Red = AI / Fake (100% Fake)</span></div>
+                </div>
+
+                <div class="top-patches-box">
+                  <strong>Top Suspicious Patches (Highest Fake Prob):</strong>
+                  <ol id="top-patches-list"></ol>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 3. ENSEMBLE PREDICTION -->
+        <section class="outcome-section" id="outcome-ensemble">
+          <div class="outcome-header">
+            <h2>3. Ensemble (Weighted Fusion) Outcome</h2>
+            <span class="outcome-badge" id="ensemble-verdict-badge">--</span>
+          </div>
+          <table class="simple-table">
+            <tbody>
+              <tr><th>Final Verdict</th><td id="ens-val-verdict">--</td></tr>
+              <tr><th>Overall Confidence</th><td id="ens-val-conf">--</td></tr>
+              <tr><th>Combined Real Probability</th><td id="ens-val-real">--</td></tr>
+              <tr><th>Combined Fake Probability</th><td id="ens-val-fake">--</td></tr>
+              <tr><th>Fusion Method</th><td id="ens-val-method">Weighted CNN mean</td></tr>
+              <tr><th>Wide Model Weight</th><td id="ens-val-wideweight">--</td></tr>
+              <tr><th>Local Patch Model Weight</th><td id="ens-val-localweight">--</td></tr>
+            </tbody>
+          </table>
+        </section>
+
+      </div>
+    </section>
+
+    <section id="models" class="panel">
+      <p>Architecture, parameter counts, memory, compute budget, checkpoint metadata, and base-model metrics are taken from the project’s model report.</p>
+      <div id="report-status" class="status">Loading report…</div>
+      <article id="report" class="report" hidden></article>
+    </section>
+  </main>
+  <script src="app.js"></script>
+</body>
+</html>
