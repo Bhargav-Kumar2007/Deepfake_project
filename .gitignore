@@ -62,3 +62,8 @@ desktop.ini
 *.log
 .env
 .env.local
+
+# Datasets & Large Archives
+ai_faces_dataset/
+ai_faces_dataset.zip
+*.zip

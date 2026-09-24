@@ -1,0 +1,15 @@
+Subset,Generator,Ground_Truth,Model,Images_Count,Accuracy,Balanced_Accuracy,Fake_Precision,Fake_Recall_Sensitivity,Fake_F1_Score,Real_Specificity,False_Positive_Rate,False_Negative_Rate,ROC_AUC,PR_AUC,Brier_Score,Mean_Confidence,TP,FP,TN,FN
+OVERALL DATASET,All (LFW + 5 AI Generators),Mixed (1000 Real / 2000 Fake),Wide Model (DeepCNN),3000,81.93%,83.28%,92.58%,79.25%,85.40%,87.30%,12.70%,20.75%,0.8980,0.9533,0.1280,84.36%,1585,127,873,415
+OVERALL DATASET,All (LFW + 5 AI Generators),Mixed (1000 Real / 2000 Fake),Local Model (PatchCNN),3000,28.00%,21.02%,45.65%,41.95%,43.72%,0.10%,99.90%,58.05%,0.1472,0.5443,0.5200,81.89%,839,999,1,1161
+00_REAL_LFW,Real (LFW),REAL,Wide Model (DeepCNN),1000,87.30%,87.30%,0.00%,0.00%,0.00%,87.30%,12.70%,0.00%,N/A,N/A,0.1092,79.47%,0,127,873,0
+00_REAL_LFW,Real (LFW),REAL,Local Model (PatchCNN),1000,0.10%,0.10%,0.00%,0.00%,0.00%,0.10%,99.90%,0.00%,N/A,N/A,0.7865,88.59%,0,999,1,0
+01_SD-1.5,Stable Diffusion 1.5,FAKE,Wide Model (DeepCNN),400,77.25%,77.25%,100.00%,77.25%,87.17%,0.00%,0.00%,22.75%,N/A,N/A,0.1511,84.17%,309,0,0,91
+01_SD-1.5,Stable Diffusion 1.5,FAKE,Local Model (PatchCNN),400,96.25%,96.25%,100.00%,96.25%,98.09%,0.00%,0.00%,3.75%,N/A,N/A,0.0432,84.96%,385,0,0,15
+02_SD-2.1,Stable Diffusion 2.1,FAKE,Wide Model (DeepCNN),400,76.75%,76.75%,100.00%,76.75%,86.85%,0.00%,0.00%,23.25%,N/A,N/A,0.1688,89.87%,307,0,0,93
+02_SD-2.1,Stable Diffusion 2.1,FAKE,Local Model (PatchCNN),400,81.25%,81.25%,100.00%,81.25%,89.66%,0.00%,0.00%,18.75%,N/A,N/A,0.1431,77.51%,325,0,0,75
+03_RealisticVision-V6,RealisticVision V6.0,FAKE,Wide Model (DeepCNN),400,68.75%,68.75%,100.00%,68.75%,81.48%,0.00%,0.00%,31.25%,N/A,N/A,0.1892,78.34%,275,0,0,125
+03_RealisticVision-V6,RealisticVision V6.0,FAKE,Local Model (PatchCNN),400,7.25%,7.25%,100.00%,7.25%,13.52%,0.00%,0.00%,92.75%,N/A,N/A,0.5046,70.60%,29,0,0,371
+04_Playground-v2.5,Playground v2.5,FAKE,Wide Model (DeepCNN),400,93.75%,93.75%,100.00%,93.75%,96.77%,0.00%,0.00%,6.25%,N/A,N/A,0.0397,94.40%,375,0,0,25
+04_Playground-v2.5,Playground v2.5,FAKE,Local Model (PatchCNN),400,21.25%,21.25%,100.00%,21.25%,35.05%,0.00%,0.00%,78.75%,N/A,N/A,0.5113,74.83%,85,0,0,315
+05_SDXL-base-1.0,SDXL Base 1.0,FAKE,Wide Model (DeepCNN),400,79.75%,79.75%,100.00%,79.75%,88.73%,0.00%,0.00%,20.25%,N/A,N/A,0.1381,87.26%,319,0,0,81
+05_SDXL-base-1.0,SDXL Base 1.0,FAKE,Local Model (PatchCNN),400,3.75%,3.75%,100.00%,3.75%,7.23%,0.00%,0.00%,96.25%,N/A,N/A,0.7314,84.80%,15,0,0,385
