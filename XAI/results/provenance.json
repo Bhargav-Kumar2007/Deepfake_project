@@ -1,0 +1,22 @@
+{
+  "generated_at_utc": "2026-09-25T17:17:36.646675+00:00",
+  "model": "Wide Model (DeepCNN)",
+  "checkpoint": "faces_deepfake\\models\\best_wide_model.pth",
+  "checkpoint_sha256": "965bc5e7660a26cf5903c8826140bcd0a44d268ac8d8cbad122f823177dfbaa5",
+  "device": "cuda",
+  "torch_version": "2.5.1+cu124",
+  "python_version": "3.11.9",
+  "input_size": [
+    256,
+    256
+  ],
+  "methods_from": "faces_deepfake/user/explainability.py",
+  "methods": [
+    "Grad-CAM",
+    "Grad-CAM++",
+    "Score-CAM",
+    "Integrated Gradients",
+    "LIME"
+  ],
+  "target_policy": "model predicted class (REAL when real_probability >= 0.5, else FAKE)"
+}
