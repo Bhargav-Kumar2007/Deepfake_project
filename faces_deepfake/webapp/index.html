@@ -3,14 +3,18 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="DeepFake Detector — AI-powered face authenticity analysis using Wide CNN, Local Patch CNN, and 5 XAI explainability methods.">
   <title>DeepFake Detector</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
   <main class="page">
     <header>
-      <h1>DeepFake Detector</h1>
-      <p>Analysis Report: Wide Model, Local Model, and Ensemble Fusion</p>
+      <div class="header-icon">🔍</div>
+      <div class="header-text">
+        <h1>DeepFake Detector</h1>
+        <p>Wide Model · Local Patch CNN · Ensemble Fusion · 5 XAI Methods</p>
+      </div>
     </header>
 
     <nav class="tabs" aria-label="Application sections">
@@ -20,9 +24,9 @@
 
     <section id="scan" class="panel active">
       <div class="actions">
-        <label class="button" for="file-input">Upload Photo</label>
-        <button id="camera-button" class="button" type="button">Use Camera</button>
-        <button id="rescan-button" class="button" type="button" disabled>Rescan</button>
+        <label class="button" for="file-input">📂 Upload Photo</label>
+        <button id="camera-button" class="button" type="button">📷 Use Camera</button>
+        <button id="rescan-button" class="button" type="button" disabled>🔄 Rescan</button>
         <input id="file-input" type="file" accept="image/jpeg,image/png,image/webp,image/bmp" hidden>
       </div>
       <p id="status" class="status">Choose an image to begin.</p>
@@ -30,8 +34,8 @@
       <div id="camera-area" class="camera-area" hidden>
         <video id="camera" autoplay playsinline></video>
         <div class="actions">
-          <button id="capture-button" class="button" type="button">Capture Photo</button>
-          <button id="close-camera" class="button" type="button">Close Camera</button>
+          <button id="capture-button" class="button" type="button">📸 Capture Photo</button>
+          <button id="close-camera" class="button" type="button">✕ Close Camera</button>
         </div>
       </div>
 
@@ -47,7 +51,7 @@
         <!-- 1. WIDE MODEL PREDICTION & EXPLAINABILITY -->
         <section class="outcome-section" id="outcome-wide">
           <div class="outcome-header">
-            <h2>1. Wide Model Prediction & Explainability</h2>
+            <h2>1. Wide Model Prediction &amp; Explainability</h2>
             <span class="outcome-badge" id="wide-verdict-badge">--</span>
           </div>
 
@@ -57,13 +61,13 @@
               <tr><th>Confidence</th><td id="wide-val-conf">--</td></tr>
               <tr><th>Real Probability</th><td id="wide-val-real">--</td></tr>
               <tr><th>Fake Probability</th><td id="wide-val-fake">--</td></tr>
-              <tr><th>Resolution</th><td>512 x 512 (Transformed for evaluation)</td></tr>
+              <tr><th>Resolution</th><td>512 × 512 (Transformed for evaluation)</td></tr>
             </tbody>
           </table>
 
-          <div class="xai-subpanel">
-            <h3>Explainability Heatmaps (512x512 Transformed Image)</h3>
-            <p class="desc-text">Heatmaps and the face image are both aligned at 512x512 resolution for accurate pixel-to-pixel overlay.</p>
+          <div class="xai-subpanel" id="wide-xai-subpanel">
+            <h3>Explainability Heatmaps (512×512 Transformed Image)</h3>
+            <p class="desc-text">Heatmaps and the face image are both aligned at 512×512 resolution for accurate pixel-to-pixel overlay.</p>
 
             <div class="xai-nav">
               <button class="xai-btn active" data-method="gradcam" type="button">Grad-CAM</button>
@@ -107,6 +111,11 @@
             <div id="xai-grid-view" class="xai-grid-view" hidden>
               <div class="xai-grid" id="xai-grid-container"></div>
             </div>
+
+            <!-- Shown when XAI is unavailable -->
+            <div id="xai-unavailable-msg" class="xai-unavailable" hidden>
+              ⚠️ XAI heatmaps are not available for this image. The prediction results above are still valid.
+            </div>
           </div>
         </section>
 
@@ -130,8 +139,8 @@
           </table>
 
           <div class="xai-subpanel" id="patch-xai-subpanel">
-            <h3>Patch Model Probability Heatmap (36 Patches, 112x112)</h3>
-            <p class="desc-text">Shows the probability distribution predicted across the 36 patches. Hover over any cell in the 6x6 grid to see which patch gave what probability and its position on the face.</p>
+            <h3>Patch Model Probability Heatmap (36 Patches, 112×112)</h3>
+            <p class="desc-text">Shows the probability distribution predicted across the 36 patches. Hover over any cell in the 6×6 grid to see which patch gave what probability and its position on the face.</p>
 
             <div class="xai-single-view">
               <div class="xai-view-left">
@@ -152,7 +161,7 @@
               </div>
 
               <div class="xai-view-right">
-                <h4>6x6 Patch Probability Matrix</h4>
+                <h4>6×6 Patch Probability Matrix</h4>
                 <p class="desc-text">Hover over any cell (P1 to P36) to inspect exact probabilities:</p>
                 <div id="patch-matrix-grid" class="patch-matrix-grid"></div>
 
@@ -199,7 +208,7 @@
     </section>
 
     <section id="models" class="panel">
-      <p>Architecture, parameter counts, memory, compute budget, checkpoint metadata, and base-model metrics are taken from the project’s model report.</p>
+      <p style="color: var(--text-secondary); font-size: 0.88rem;">Architecture, parameter counts, memory, compute budget, checkpoint metadata, and base-model metrics are taken from the project's model report.</p>
       <div id="report-status" class="status">Loading report…</div>
       <article id="report" class="report" hidden></article>
     </section>

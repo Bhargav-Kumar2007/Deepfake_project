@@ -1,37 +1,38 @@
-const input = document.querySelector('#file-input');
-const preview = document.querySelector('#preview');
-const previewBox = document.querySelector('#preview-box');
-const statusLine = document.querySelector('#status');
+const input       = document.querySelector('#file-input');
+const preview     = document.querySelector('#preview');
+const previewBox  = document.querySelector('#preview-box');
+const statusLine  = document.querySelector('#status');
 const allOutcomes = document.querySelector('#all-outcomes');
 const rescanButton = document.querySelector('#rescan-button');
-const cameraArea = document.querySelector('#camera-area');
-const video = document.querySelector('#camera');
+const cameraArea  = document.querySelector('#camera-area');
+const video       = document.querySelector('#camera');
 
 // Wide Model XAI Elements
-const xaiSingleView = document.querySelector('#xai-single-view');
-const xaiGridView = document.querySelector('#xai-grid-view');
+const xaiSingleView   = document.querySelector('#xai-single-view');
+const xaiGridView     = document.querySelector('#xai-grid-view');
 const xaiGridContainer = document.querySelector('#xai-grid-container');
-const xaiBaseImg = document.querySelector('#xai-transformed-base');
-const xaiHeatImg = document.querySelector('#xai-heatmap-layer');
-const opacitySlider = document.querySelector('#opacity-slider');
-const opacityVal = document.querySelector('#opacity-val');
-const xaiMethodTitle = document.querySelector('#xai-method-title');
-const xaiMethodDesc = document.querySelector('#xai-method-desc');
+const xaiBaseImg      = document.querySelector('#xai-transformed-base');
+const xaiHeatImg      = document.querySelector('#xai-heatmap-layer');
+const opacitySlider   = document.querySelector('#opacity-slider');
+const opacityVal      = document.querySelector('#opacity-val');
+const xaiMethodTitle  = document.querySelector('#xai-method-title');
+const xaiMethodDesc   = document.querySelector('#xai-method-desc');
+const xaiUnavailableMsg = document.querySelector('#xai-unavailable-msg');
 
 // Local Model Patch Heatmap Elements
-const patchBaseImg = document.querySelector('#patch-transformed-base');
-const patchHeatImg = document.querySelector('#patch-heatmap-layer');
+const patchBaseImg      = document.querySelector('#patch-transformed-base');
+const patchHeatImg      = document.querySelector('#patch-heatmap-layer');
 const patchOpacitySlider = document.querySelector('#patch-opacity-slider');
-const patchOpacityVal = document.querySelector('#patch-opacity-val');
+const patchOpacityVal   = document.querySelector('#patch-opacity-val');
 const patchHighlightBox = document.querySelector('#patch-highlight-box');
-const patchMatrixGrid = document.querySelector('#patch-matrix-grid');
-const patchInspectText = document.querySelector('#patch-inspect-text');
-const topPatchesList = document.querySelector('#top-patches-list');
+const patchMatrixGrid   = document.querySelector('#patch-matrix-grid');
+const patchInspectText  = document.querySelector('#patch-inspect-text');
+const topPatchesList    = document.querySelector('#top-patches-list');
 
-let selectedFile = null;
-let stream = null;
+let selectedFile   = null;
+let stream         = null;
 let currentXAIData = null;
-let currentMethod = 'gradcam';
+let currentMethod  = 'gradcam';
 
 // Top Tab Switching (Scan Image vs Model Data)
 document.querySelectorAll('.tab').forEach(button => button.addEventListener('click', () => {
@@ -57,7 +58,7 @@ function setFile(file) {
 async function analyze() {
   if (!selectedFile) return;
   allOutcomes.hidden = true;
-  setStatus('Analyzing image across Wide Model, Local Model, and XAI Heatmaps (512x512)...');
+  setStatus('Analyzing image across Wide Model, Local Model, and XAI Heatmaps (512×512)…', false, true);
   const form = new FormData();
   form.append('image', selectedFile, selectedFile.name);
   try {
@@ -65,73 +66,109 @@ async function analyze() {
     const data = await response.json();
     if (!response.ok) throw new Error(data.error || 'Analysis failed.');
     renderResults(data);
-    setStatus(`Analysis complete for: ${data.filename}`);
+    setStatus(`✅ Analysis complete for: ${data.filename}`);
   } catch (error) {
     setStatus(error.message, true);
   }
 }
 
+/**
+ * Sets the verdict badge class (real / fake / default) by text content.
+ */
+function applyBadgeClass(el, text) {
+  el.classList.remove('real', 'fake');
+  if (text === 'REAL') el.classList.add('real');
+  else if (text === 'FAKE') el.classList.add('fake');
+}
+
 function renderResults(data) {
-  const pct = v => `${(Number(v) * 100).toFixed(2)}%`;
-  const wide = data.wide_model || {};
+  const pct   = v => `${(Number(v) * 100).toFixed(2)}%`;
+  const wide  = data.wide_model  || {};
   const local = data.local_model || {};
-  const fusion = data.fusion || {};
+  const fusion = data.fusion     || {};
 
   // 1. WIDE MODEL PREDICTION
-  document.querySelector('#wide-verdict-badge').textContent = wide.prediction || '--';
-  document.querySelector('#wide-val-verdict').textContent = wide.prediction || '--';
-  document.querySelector('#wide-val-conf').textContent = pct(wide.confidence || 0);
-  document.querySelector('#wide-val-real').textContent = pct(wide.real_probability || 0);
-  document.querySelector('#wide-val-fake').textContent = pct(wide.fake_probability || 0);
+  const wideVerdict = wide.prediction || '--';
+  document.querySelector('#wide-verdict-badge').textContent = wideVerdict;
+  applyBadgeClass(document.querySelector('#wide-verdict-badge'), wideVerdict);
+  document.querySelector('#wide-val-verdict').textContent = wideVerdict;
+  document.querySelector('#wide-val-conf').textContent    = pct(wide.confidence    || 0);
+  document.querySelector('#wide-val-real').textContent    = pct(wide.real_probability || 0);
+  document.querySelector('#wide-val-fake').textContent    = pct(wide.fake_probability || 0);
 
   // XAI EXPLAINABILITY ON 512x512 TRANSFORMED FACE
   currentXAIData = data;
+  const hasHeatmaps = data.heatmaps && Object.keys(data.heatmaps).length > 0;
+
   if (data.transformed_image) {
     xaiBaseImg.src = data.transformed_image;
+    patchBaseImg.src = data.transformed_image;
   } else {
     xaiBaseImg.src = preview.src;
+    patchBaseImg.src = preview.src;
   }
 
-  if (currentMethod === 'compare') {
-    showCompareGrid();
+  // Show/hide XAI panel based on availability
+  const xaiNavEl = document.querySelector('.xai-nav');
+  if (hasHeatmaps) {
+    xaiSingleView.hidden = false;
+    xaiGridView.hidden = true;
+    xaiUnavailableMsg.hidden = true;
+    if (xaiNavEl) xaiNavEl.style.display = '';
+    if (currentMethod === 'compare') {
+      showCompareGrid();
+    } else {
+      showSingleMethod(currentMethod);
+    }
   } else {
-    showSingleMethod(currentMethod);
+    // No heatmaps — hide XAI viewer, show notice
+    xaiSingleView.hidden = true;
+    xaiGridView.hidden = true;
+    xaiUnavailableMsg.hidden = false;
+    if (xaiNavEl) xaiNavEl.style.display = 'none';
   }
 
   // 2. LOCAL MODEL PREDICTION
-  document.querySelector('#local-verdict-badge').textContent = local.prediction || '--';
-  document.querySelector('#local-val-verdict').textContent = local.prediction || '--';
-  document.querySelector('#local-val-conf').textContent = pct(local.confidence || 0);
-  document.querySelector('#local-val-real').textContent = pct(local.real_probability || 0);
-  document.querySelector('#local-val-fake').textContent = pct(local.fake_probability || 0);
-  document.querySelector('#local-val-count').textContent = local.patch_count || 36;
-  document.querySelector('#local-val-mean').textContent = Number(local.mean || 0).toFixed(5);
-  document.querySelector('#local-val-std').textContent = Number(local.std_dev || 0).toFixed(5);
-  document.querySelector('#local-val-var').textContent = Number(local.variance || 0).toFixed(5);
+  const localVerdict = local.prediction || '--';
+  document.querySelector('#local-verdict-badge').textContent = localVerdict;
+  applyBadgeClass(document.querySelector('#local-verdict-badge'), localVerdict);
+  document.querySelector('#local-val-verdict').textContent = localVerdict;
+  document.querySelector('#local-val-conf').textContent    = pct(local.confidence    || 0);
+  document.querySelector('#local-val-real').textContent    = pct(local.real_probability || 0);
+  document.querySelector('#local-val-fake').textContent    = pct(local.fake_probability || 0);
+  document.querySelector('#local-val-count').textContent   = local.patch_count || 36;
+  document.querySelector('#local-val-mean').textContent    = Number(local.mean    || 0).toFixed(5);
+  document.querySelector('#local-val-std').textContent     = Number(local.std_dev || 0).toFixed(5);
+  document.querySelector('#local-val-var').textContent     = Number(local.variance || 0).toFixed(5);
 
   // RENDER LOCAL MODEL PATCH HEATMAP & 6x6 MATRIX
   renderPatchHeatmap(local, data.transformed_image || preview.src);
 
   // 3. ENSEMBLE OUTCOME
-  document.querySelector('#ensemble-verdict-badge').textContent = data.prediction || '--';
-  document.querySelector('#ens-val-verdict').textContent = data.prediction || '--';
-  document.querySelector('#ens-val-conf').textContent = pct(data.confidence || 0);
-  document.querySelector('#ens-val-real').textContent = pct(data.real_probability || 0);
-  document.querySelector('#ens-val-fake').textContent = pct(data.fake_probability || 0);
-  document.querySelector('#ens-val-wideweight').textContent = Number(fusion.wide_weight || 1.0).toFixed(6);
+  const ensVerdict = data.prediction || '--';
+  document.querySelector('#ensemble-verdict-badge').textContent = ensVerdict;
+  applyBadgeClass(document.querySelector('#ensemble-verdict-badge'), ensVerdict);
+  document.querySelector('#ens-val-verdict').textContent     = ensVerdict;
+  document.querySelector('#ens-val-conf').textContent        = pct(data.confidence    || 0);
+  document.querySelector('#ens-val-real').textContent        = pct(data.real_probability || 0);
+  document.querySelector('#ens-val-fake').textContent        = pct(data.fake_probability || 0);
+  document.querySelector('#ens-val-wideweight').textContent  = Number(fusion.wide_weight  || 1.0).toFixed(6);
   document.querySelector('#ens-val-localweight').textContent = Number(fusion.patch_weight || 1.0).toFixed(6);
 
   allOutcomes.hidden = false;
 }
 
 function showSingleMethod(methodKey) {
-  if (!currentXAIData || !currentXAIData.heatmaps) return;
+  if (!currentXAIData) return;
 
-  const heatmaps = currentXAIData.raw_heatmaps || currentXAIData.heatmaps;
+  const heatmaps    = currentXAIData.raw_heatmaps || currentXAIData.heatmaps || {};
   const descriptions = currentXAIData.descriptions || {};
 
   if (!heatmaps[methodKey]) {
-    methodKey = Object.keys(heatmaps)[0];
+    // Try fallback to first available key
+    const firstKey = Object.keys(heatmaps)[0];
+    if (!firstKey) return; // No heatmaps at all, already hidden above
+    methodKey = firstKey;
   }
   currentMethod = methodKey;
 
@@ -140,7 +177,7 @@ function showSingleMethod(methodKey) {
   });
 
   xaiSingleView.hidden = false;
-  xaiGridView.hidden = true;
+  xaiGridView.hidden   = true;
 
   if (currentXAIData.raw_heatmaps && currentXAIData.raw_heatmaps[methodKey]) {
     xaiHeatImg.src = currentXAIData.raw_heatmaps[methodKey];
@@ -153,11 +190,11 @@ function showSingleMethod(methodKey) {
   const info = descriptions[methodKey] || {
     name: methodKey.toUpperCase(),
     concept: 'Model Activation Heatmap',
-    description: 'Visual attribution map on 512x512 transformed image.',
+    description: 'Visual attribution map on 512×512 transformed image.',
   };
 
   xaiMethodTitle.textContent = `${info.name} — ${info.concept}`;
-  xaiMethodDesc.textContent = info.description;
+  xaiMethodDesc.textContent  = info.description;
 }
 
 function showCompareGrid() {
@@ -169,9 +206,9 @@ function showCompareGrid() {
   });
 
   xaiSingleView.hidden = true;
-  xaiGridView.hidden = false;
+  xaiGridView.hidden   = false;
 
-  const overlays = currentXAIData.heatmaps;
+  const overlays     = currentXAIData.heatmaps;
   const descriptions = currentXAIData.descriptions || {};
 
   let html = '';
@@ -181,7 +218,7 @@ function showCompareGrid() {
       <div class="xai-grid-item">
         <h4>${info.name}</h4>
         <div class="grid-img-wrap">
-          <img src="${overlaySrc}" alt="${info.name}" width="240" height="240">
+          <img src="${overlaySrc}" alt="${info.name}" loading="lazy">
         </div>
         <p class="grid-concept">${info.concept}</p>
       </div>
@@ -223,7 +260,7 @@ function renderPatchHeatmap(local, baseSrc) {
     let gridHtml = '';
     patches.forEach(p => {
       const fakePct = (p.fake_probability * 100).toFixed(0);
-      const isFake = p.fake_probability >= 0.5;
+      const isFake  = p.fake_probability >= 0.5;
       // Exact color coordination: RED for AI/Fake, BLUE for Real
       const bg = isFake
         ? `rgba(220, 30, 30, ${Math.min(0.92, 0.3 + p.fake_probability * 0.6)})`
@@ -238,15 +275,15 @@ function renderPatchHeatmap(local, baseSrc) {
     // Attach hover listeners to cells for live inspection & bounding box highlight
     patchMatrixGrid.querySelectorAll('.patch-cell').forEach(cell => {
       const idx = parseInt(cell.dataset.idx, 10);
-      const p = patches.find(item => item.index === idx);
+      const p   = patches.find(item => item.index === idx);
       if (!p) return;
 
       cell.addEventListener('mouseenter', () => {
-        patchInspectText.innerHTML = `<strong>Patch #${p.index} (Row ${p.row}, Col ${p.col}):</strong> Fake Prob: <strong>${(p.fake_probability * 100).toFixed(2)}%</strong> | Real Prob: <strong>${(p.real_probability * 100).toFixed(2)}%</strong> | Verdict: <strong>${p.verdict}</strong> [Position: X=${p.x}, Y=${p.y} (112x112)]`;
+        patchInspectText.innerHTML = `<strong>Patch #${p.index} (Row ${p.row}, Col ${p.col}):</strong> Fake Prob: <strong>${(p.fake_probability * 100).toFixed(2)}%</strong> | Real Prob: <strong>${(p.real_probability * 100).toFixed(2)}%</strong> | Verdict: <strong>${p.verdict}</strong> [Position: X=${p.x}, Y=${p.y} (112×112)]`;
         if (patchHighlightBox) {
-          patchHighlightBox.style.left = p.x + 'px';
-          patchHighlightBox.style.top = p.y + 'px';
-          patchHighlightBox.style.width = p.size + 'px';
+          patchHighlightBox.style.left   = p.x + 'px';
+          patchHighlightBox.style.top    = p.y + 'px';
+          patchHighlightBox.style.width  = p.size + 'px';
           patchHighlightBox.style.height = p.size + 'px';
           patchHighlightBox.hidden = false;
         }
@@ -278,9 +315,11 @@ document.querySelectorAll('.xai-btn').forEach(btn => {
   });
 });
 
-function setStatus(message, isError = false) {
+function setStatus(message, isError = false, isLoading = false) {
   statusLine.textContent = message;
-  statusLine.className = isError ? 'status error' : 'status';
+  statusLine.className   = 'status';
+  if (isError)   statusLine.classList.add('error');
+  if (isLoading) statusLine.classList.add('loading');
 }
 
 // Camera controls
@@ -296,7 +335,7 @@ document.querySelector('#camera-button').addEventListener('click', async () => {
 document.querySelector('#close-camera').addEventListener('click', stopCamera);
 document.querySelector('#capture-button').addEventListener('click', () => {
   const canvas = document.createElement('canvas');
-  canvas.width = video.videoWidth;
+  canvas.width  = video.videoWidth;
   canvas.height = video.videoHeight;
   canvas.getContext('2d').drawImage(video, 0, 0);
   canvas.toBlob(blob => {
@@ -314,6 +353,10 @@ function stopCamera() {
 async function loadReport() {
   try {
     const data = await (await fetch('/api/model-report')).json();
+    if (data.error) {
+      document.querySelector('#report-status').textContent = `Report unavailable: ${data.error}`;
+      return;
+    }
     renderMarkdown(data.report);
     document.querySelector('#report-status').hidden = true;
     document.querySelector('#report').hidden = false;
@@ -322,7 +365,9 @@ async function loadReport() {
   }
 }
 function inline(text) {
-  return text.replace(/`([^`]+)`/g, '<code>$1</code>').replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+  return text
+    .replace(/`([^`]+)`/g, '<code>$1</code>')
+    .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
 }
 function renderMarkdown(markdown) {
   const report = document.querySelector('#report');
@@ -333,29 +378,28 @@ function renderMarkdown(markdown) {
       const cells = line.split('|').slice(1, -1).map(cell => cell.trim());
       if (/^[-:| ]+$/.test(line.replace(/\|/g, ''))) continue;
       if (!inTable) {
-        html += '<table class="simple-table"><thead><tr>' + cells.map(c => `<th>${inline(c)}</th>`).join('') + '</tr></thead><tbody>';
+        html += '<table><thead><tr>' + cells.map(c => `<th>${inline(c)}</th>`).join('') + '</tr></thead><tbody>';
         inTable = true;
       } else {
         html += '<tr>' + cells.map(c => `<td>${inline(c)}</td>`).join('') + '</tr>';
       }
       continue;
     }
-    if (inTable) {
-      html += '</tbody></table>';
-      inTable = false;
-    }
-    if (/^### /.test(line)) html += `<h3>${inline(line.slice(4))}</h3>`;
+    if (inTable) { html += '</tbody></table>'; inTable = false; }
+    if (/^### /.test(line))     html += `<h3>${inline(line.slice(4))}</h3>`;
     else if (/^## /.test(line)) html += `<h2>${inline(line.slice(3))}</h2>`;
     else if (/^- /.test(line)) {
       if (!inList) { html += '<ul>'; inList = true; }
       html += `<li>${inline(line.slice(2))}</li>`;
     } else {
       if (inList) { html += '</ul>'; inList = false; }
-      if (line.trim() && !/^---/.test(line) && !/^>/.test(line) && !/^\$/.test(line)) html += `<p>${inline(line)}</p>`;
+      if (line.trim() && !/^---/.test(line) && !/^>/.test(line) && !/^\$/.test(line)) {
+        html += `<p>${inline(line)}</p>`;
+      }
     }
   }
   if (inTable) html += '</tbody></table>';
-  if (inList) html += '</ul>';
+  if (inList)  html += '</ul>';
   report.innerHTML = html;
 }
 loadReport();

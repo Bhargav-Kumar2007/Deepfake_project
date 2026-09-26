@@ -37,7 +37,13 @@ class DetectorHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         route = urlparse(self.path).path
         if route == "/api/model-report":
-            self.send_json({"report": REPORT_PATH.read_text(encoding="utf-8")})
+            if REPORT_PATH.is_file():
+                self.send_json({"report": REPORT_PATH.read_text(encoding="utf-8")})
+            else:
+                self.send_json(
+                    {"error": f"Report not found at {REPORT_PATH}. Run calculate_model_parameters.py --save-report first."},
+                    HTTPStatus.NOT_FOUND,
+                )
             return
         if route == "/api/health":
             self.send_json({"status": "ok"})
@@ -166,6 +172,7 @@ class DetectorHandler(BaseHTTPRequestHandler):
         self.send_response(status)
         self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Content-Length", str(len(data)))
+        self.send_header("Access-Control-Allow-Origin", "*")
         self.end_headers()
         self.wfile.write(data)
 
