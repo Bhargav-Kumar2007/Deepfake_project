@@ -4,11 +4,11 @@
 
 This folder contains the notebooks used to prepare the face-image dataset, train two binary deepfake detectors, and evaluate their predictions:
 
-| Notebook | Role |
-| --- | --- |
-| `Normal_CNN_Training.ipynb` | Trains the full-image (global) CNN. |
-| `Simple_Patch_CNN_Training.ipynb` | Trains the overlapping-patch CNN. |
-| `All_Model__testing.ipynb` | Loads both trained models, provides batch-inference utilities, and prepares comparative evaluation output. |
+| Notebook                            | Role                                                                                                       |
+| ----------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| `Normal_CNN_Training.ipynb`       | Trains the full-image (global) CNN.                                                                        |
+| `Simple_Patch_CNN_Training.ipynb` | Trains the overlapping-patch CNN.                                                                          |
+| `All_Model__testing.ipynb`        | Loads both trained models, provides batch-inference utilities, and prepares comparative evaluation output. |
 
 Both models perform binary image classification using the same real-versus-AI-generated face dataset. The notebooks were written to run in Google Colab with CUDA support, with model checkpoints and logs saved to Google Drive.
 
@@ -25,11 +25,11 @@ The generated images are gathered from the SDXL, StyleGAN2, and StyleGAN3 direct
 
 With the random seed fixed to `42`, each class is shuffled and split as follows:
 
-| Split | Real faces | AI-generated faces | Total |
-| --- | ---: | ---: | ---: |
-| Training | 40,000 | 40,000 | 80,000 |
-| Validation | 10,000 | 10,000 | 20,000 |
-| **Total** | **50,000** | **50,000** | **100,000** |
+| Split           |       Real faces | AI-generated faces |             Total |
+| --------------- | ---------------: | -----------------: | ----------------: |
+| Training        |           40,000 |             40,000 |            80,000 |
+| Validation      |           10,000 |             10,000 |            20,000 |
+| **Total** | **50,000** |   **50,000** | **100,000** |
 
 The final directory structure is:
 
@@ -70,15 +70,15 @@ The `DeepCNN` has five convolutional blocks. Each block uses two 3 x 3 convoluti
 
 ### Training configuration
 
-| Setting | Value |
-| --- | ---: |
-| Input size | 256 x 256 |
-| Batch size | 256 |
-| Planned epochs | 20 |
-| Initial learning rate | 0.001 |
-| Weight decay | 0.0001 |
-| Data-loader workers | 4 |
-| Decision threshold | sigmoid probability >= 0.5 |
+| Setting               |                      Value |
+| --------------------- | -------------------------: |
+| Input size            |                  256 x 256 |
+| Batch size            |                        256 |
+| Planned epochs        |                         20 |
+| Initial learning rate |                      0.001 |
+| Weight decay          |                     0.0001 |
+| Data-loader workers   |                          4 |
+| Decision threshold    | sigmoid probability >= 0.5 |
 
 At every epoch, the notebook calculates training loss and accuracy, then validation accuracy, precision, recall, and F1 score. It saves a resumable `latest_checkpoint.pth`, saves `best_model.pth` when validation accuracy improves, and appends epoch metrics to `training_metrics.csv`.
 
@@ -102,17 +102,17 @@ During training and validation, every patch receives the image-level class label
 
 The `PatchCNN` contains four convolutional blocks with the same convolution, batch-normalization, ReLU, and max-pooling pattern as the global CNN. Its channel widths are 32, 64, 128, and 256. Its classifier head uses adaptive average pooling followed by 256-to-128-to-64 fully connected layers, 0.3 dropout after the first two layers, and one output logit. The notebook describes it as an approximately 1.2-million-parameter model.
 
-| Setting | Value |
-| --- | ---: |
-| Input size | 512 x 512 |
-| Patch size | 112 x 112 |
-| Patch overlap | 20 pixels |
-| Patches per image | 36 |
-| Batch size | 16 |
-| Planned epochs | 25 |
-| Initial learning rate | 0.0001 |
-| Weight decay | 0.0001 |
-| Data-loader workers | 4 |
+| Setting               |     Value |
+| --------------------- | --------: |
+| Input size            | 512 x 512 |
+| Patch size            | 112 x 112 |
+| Patch overlap         | 20 pixels |
+| Patches per image     |        36 |
+| Batch size            |        16 |
+| Planned epochs        |        25 |
+| Initial learning rate |    0.0001 |
+| Weight decay          |    0.0001 |
+| Data-loader workers   |         4 |
 
 The notebook saves the latest checkpoint, best checkpoint/model, final model, and a per-epoch CSV log in:
 
@@ -144,10 +144,10 @@ These files are configured to be saved under:
 
 The following points reflect the notebooks as currently stored and matter when reproducing or interpreting the evaluation:
 
-1. `ImageFolder` sorts folder names alphabetically, so `fake` is assigned index `0` and `real` index `1`. The training losses use these numeric labels correctly. However, the inference examples label a probability of at least 0.5 as `FAKE`, which is opposite to this folder mapping. Before using scores as fake probabilities, the class convention should be made consistent across training, inference, and reporting.
-2. The evaluation cell calls `predict_image_wide` and `predict_image_patch`, whereas the visible preceding cells define `predict_batch_wide` and `predict_batch_patch`. The checked-in notebook therefore needs compatible single-image wrapper functions or the evaluation cell must call the batch functions with one image at a time.
-3. Since the evaluation scans both training and validation folders, its reported metrics do not measure generalization to a separate unseen test set. A final performance claim should be based on a separately held-out test dataset.
-4. Checkpoints include model, optimizer, scheduler, scaler, and random-number-generator states to support resuming. Exact results may still vary because deterministic cuDNN settings are commented out.
+1. **Class Index Mapping and Inference Consistency:** By default, PyTorch's `ImageFolder` assigns class indices alphabetically, meaning the `fake` folder is assigned index `0` and the `real` folder is assigned index `1`. During the initial full-dataset evaluation, the raw model outputs reflected this underlying index mapping. To ensure the final reported metrics and deployment scripts align with the standard semantic meaning (where a probability $\ge 0.5$ indicates a "REAL" image), the evaluation outputs were explicitly corrected in the final CSV logs. Furthermore, the current inference scripts (`use_wide_model.py` and `use_local_model.py`) have been explicitly updated to deterministically enforce `label = "REAL" if prob >= 0.5 else "FAKE"`. This guarantees that all future testing, fusion, and web app deployments use the correct, intuitive class mapping.
+2. The evaluation cell in the notebook calls `predict_image_wide` and `predict_image_patch`. Ensure compatible single-image wrapper functions are defined, or call the batch functions with one image at a time.
+3. Since the evaluation scans both training and validation folders, its reported metrics do not measure generalization to a separate unseen test set. A final performance claim should be based on a separately held-out test dataset (as performed in the external 3,000-image evaluation).
+4. Checkpoints include model, optimizer, scheduler, scaler, and random-number-generator states to support resuming. Exact results may still vary slightly because deterministic cuDNN settings are commented out.
 
 ## Execution order
 
