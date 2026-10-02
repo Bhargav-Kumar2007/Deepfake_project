@@ -41,6 +41,7 @@ venv.bak/
 *.tmp
 *.swp
 *~
+*.temp
 
 # Test & run outputs
 faces_deepfake/test_xai_output/
