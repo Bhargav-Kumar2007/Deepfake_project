@@ -37,7 +37,7 @@ DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # Dataset-wide mean-confidence ratio supplied for the two base CNNs.
 # The scores below are always *real* probabilities.
-WIDE_WEIGHT = 1.0072312107559
+WIDE_WEIGHT = 1.0
 PATCH_WEIGHT = 1.0
 
 # Model singletons for cached loading
