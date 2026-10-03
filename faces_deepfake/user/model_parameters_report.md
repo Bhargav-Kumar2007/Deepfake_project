@@ -4,12 +4,12 @@ The active system has two CNNs only: `PatchCNN` for local texture analysis and `
 
 ## Active pipeline overview
 
-| Component | Architecture | Parameters | FP32 memory | Checkpoint |
-| --- | --- | ---: | ---: | ---: |
-| Local texture model | `PatchCNN` | 1,215,393 | 4.64 MB | 13.98 MB |
-| Wide global model | `DeepCNN` | 4,847,777 | 18.49 MB | 55.57 MB |
-| Weighted fusion | Deterministic formula | 0 | 0 MB | None |
-| Complete pipeline | Dual CNN + weighted mean | 6,063,170 | 23.13 MB | 69.55 MB |
+| Component           | Architecture             | Parameters | FP32 memory | Checkpoint |
+| ------------------- | ------------------------ | ---------: | ----------: | ---------: |
+| Local texture model | `PatchCNN`             |  1,215,393 |     4.64 MB |   13.98 MB |
+| Wide global model   | `DeepCNN`              |  4,847,777 |    18.49 MB |   55.57 MB |
+| Weighted fusion     | Deterministic formula    |          0 |        0 MB |       None |
+| Complete pipeline   | Dual CNN + weighted mean |  6,063,170 |    23.13 MB |   69.55 MB |
 
 ## Local Texture Model: PatchCNN
 
@@ -37,10 +37,10 @@ The active system has two CNNs only: `PatchCNN` for local texture analysis and `
 The final real probability is:
 
 ```text
-real_probability = (1.0072312107559 * wide_real_probability + 1.0 * patch_real_probability) / (1.0072312107559 + 1.0)
+real_probability = (1.0 * wide_real_probability + 1.0 * patch_real_probability) / (1.0072312107559 + 1.0)
 ```
 
-- **Wide : Patch weight ratio:** 1.0072312107559 : 1
+- **Wide : Patch weight ratio:** 1 : 1
 - **Learned parameters:** 0
 - **Additional checkpoint:** none
 - **Decision rule:** REAL at a real probability of at least 0.5; otherwise FAKE.
