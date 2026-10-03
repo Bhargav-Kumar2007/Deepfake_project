@@ -37,7 +37,7 @@ The active system has two CNNs only: `PatchCNN` for local texture analysis and `
 The final real probability is:
 
 ```text
-real_probability = (1.0 * wide_real_probability + 1.0 * patch_real_probability) / (1.0072312107559 + 1.0)
+real_probability = (1.0 * wide_real_probability + 1.0 * patch_real_probability) / (1.0 + 1.0)
 ```
 
 - **Wide : Patch weight ratio:** 1 : 1
