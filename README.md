@@ -227,4 +227,4 @@ Cross-generator evaluation results (new AI generators not seen during training) 
 
 ## License
 
-No license file is currently included. Add a license before distributing or reusing this project publicly.
+MIT License.
